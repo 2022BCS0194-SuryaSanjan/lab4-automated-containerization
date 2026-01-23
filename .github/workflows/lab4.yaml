@@ -30,12 +30,17 @@ jobs:
 
       - name: Compare MSE
         run: |
-          if (( $(echo "$MSE < $BEST_MSE" | bc -l) )); then
-            echo "Model improved"
-          else
-            echo "Model not improved"
-            exit 1
-          fi
+          python - <<EOF
+          import os
+          mse = float(os.environ["MSE"])
+          best = float(os.environ["BEST_MSE"])
+          if mse < best:
+              print("Model improved")
+          else:
+              print("Model not improved")
+              exit(1)
+          EOF
+
 
   deploy:
     needs: train
