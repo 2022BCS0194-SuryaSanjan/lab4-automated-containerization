@@ -7,6 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY scripts/ scripts/
 COPY dataset/ dataset/
-COPY outputs/ outputs/
 
 CMD ["python", "scripts/train.py"]

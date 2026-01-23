@@ -7,8 +7,6 @@ on:
 jobs:
   train:
     runs-on: ubuntu-latest
-    env:
-      BEST_MSE: ${{ vars.BEST_MSE }}
 
     steps:
       - name: Checkout repo
@@ -25,14 +23,13 @@ jobs:
       - name: Train model
         run: python scripts/train.py
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
       - name: Read MSE
         run: |
           echo "MSE=$(jq .mse outputs/results/metrics.json)" >> $GITHUB_ENV
 
       - name: Compare MSE
+        env:
+          BEST_MSE: ${{ vars.BEST_MSE }}
         run: |
           python - <<EOF
           import os
