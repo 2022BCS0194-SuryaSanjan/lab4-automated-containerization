@@ -57,9 +57,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker image
-        run: |
-          docker build -t sanjan2022bcs0194/surya-sanjan-2022bcs0194-wine-api:latest .
+        run: docker build -t sanjan2022bcs0194/surya-sanjan-2022bcs0194-wine-api:latest .
 
       - name: Push Docker image
-        run: |
-          docker push sanjan2022bcs0194/surya-sanjan-2022bcs0194-wine-api:latest
+        run: docker push sanjan2022bcs0194/surya-sanjan-2022bcs0194-wine-api:latest
