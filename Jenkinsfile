@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "<sanjan2022bcs0194>/wine-ml-model"
+        DOCKER_IMAGE = "sanjan2022bcs0194/wine-ml-model"
         DOCKER_TAG = "latest"
         NAME = "<Surya_Sanjan>"
         ROLLNO = "<2022BCS0194>"
