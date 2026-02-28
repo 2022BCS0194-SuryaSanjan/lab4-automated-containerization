@@ -3,7 +3,13 @@ import joblib
 import numpy as np
 
 app = FastAPI()
+
+# Load model
 model = joblib.load("outputs/results/model.pkl")
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 @app.post("/predict")
 def predict(features: dict):
