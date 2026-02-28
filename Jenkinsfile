@@ -2,60 +2,95 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "sanjan2022bcs0194/wine-ml-model"
-        DOCKER_TAG = "latest"
-        NAME = "<Surya_Sanjan>"
-        ROLLNO = "<2022BCS0194>"
+        IMAGE_NAME = "sanjan2022bcs0194/wine-ml-model:v2"
+        CONTAINER_NAME = "wine-lab7-container"
     }
 
     stages {
 
-        stage('Clone Repository') {
+        stage('Pull Image') {
             steps {
-                git branch: 'main',
-                url: 'https://github.com/2022BCS0194-SuryaSanjan/lab4-automated-containerization.git'
+                sh "docker pull ${IMAGE_NAME}"
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Run Container') {
+            steps {
+                sh "docker run -d -p 8000:8000 --name ${CONTAINER_NAME} ${IMAGE_NAME}"
+            }
+        }
+
+        stage('Wait for API Readiness') {
             steps {
                 script {
-                    sh 'docker build -t $DOCKER_IMAGE:$DOCKER_TAG .'
+                    timeout(time: 40, unit: 'SECONDS') {
+                        waitUntil {
+                            def response = sh(
+                                script: "curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/docs",
+                                returnStdout: true
+                            ).trim()
+                            return response == "200"
+                        }
+                    }
                 }
             }
         }
 
-        stage('Train Model') {
+        stage('Valid Inference Test') {
             steps {
-                sh 'docker run --rm $DOCKER_IMAGE:$DOCKER_TAG python scripts/train.py'
-            }
-        }
+                script {
+                    def response = sh(
+                        script: '''
+                        curl -s -X POST http://localhost:8000/predict \
+                        -H "Content-Type: application/json" \
+                        -d '{"fixed_acidity":7.4,"volatile_acidity":0.7,"citric_acid":0,"residual_sugar":1.9,"chlorides":0.076,"free_sulfur_dioxide":11,"total_sulfur_dioxide":34,"density":0.9978,"pH":3.51,"sulphates":0.56,"alcohol":9.4}'
+                        ''',
+                        returnStdout: true
+                    )
 
-        stage('Print Metrics + Student Info') {
-            steps {
-                sh '''
-                echo "----------------------------------"
-                echo "Model Evaluation Completed"
-                echo "Student Name: $NAME"
-                echo "Roll Number: $ROLLNO"
-                echo "----------------------------------"
-                '''
-            }
-        }
+                    echo "Valid Response: ${response}"
 
-        stage('Push to DockerHub') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'USERNAME',
-                    passwordVariable: 'PASSWORD'
-                )]) {
-                    sh '''
-                    echo $PASSWORD | docker login -u $USERNAME --password-stdin
-                    docker push $DOCKER_IMAGE:$DOCKER_TAG
-                    '''
+                    if (!response.contains("prediction")) {
+                        error("Prediction field missing!")
+                    }
                 }
             }
+        }
+
+        stage('Invalid Inference Test') {
+            steps {
+                script {
+                    def response = sh(
+                        script: '''
+                        curl -s -X POST http://localhost:8000/predict \
+                        -H "Content-Type: application/json" \
+                        -d '{"fixed_acidity":7.4}'
+                        ''',
+                        returnStdout: true
+                    )
+
+                    echo "Invalid Response: ${response}"
+
+                    if (!response.contains("error")) {
+                        error("Invalid input did not return error!")
+                    }
+                }
+            }
+        }
+
+        stage('Stop Container') {
+            steps {
+                sh "docker rm -f ${CONTAINER_NAME}"
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo "Pipeline FAILED - Model validation unsuccessful."
+        }
+        success {
+            echo "Pipeline SUCCESS - Model validation passed."
         }
     }
 }
